@@ -4,5 +4,5 @@ function ispowerof2() {
   let number = prompt("enter an integer")
   return Math.log2(number)%1===0
 }
-alert(number + " : " ispowerof2(number))
+alert(number + " : " + ispowerof2(number))
 console.log(number,ispowerof2(number))
