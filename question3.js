@@ -1,6 +1,6 @@
 // Question 3: Power of Two
 // Write a program that takes an integer as input and returns true if the input is a power of two.
-function ispowerof2() {
+function ispowerof2(number) {
   let number = prompt("enter an integer")
   return Math.log2(number)%1===0
 }
