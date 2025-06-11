@@ -18,14 +18,39 @@ A feature-rich WhatsApp bot with status viewing, message tracking, and more.
 2. Go to [Railway](https://railway.app/) and create a new account if you haven't already
 3. Click "New Project" and select "Deploy from GitHub repo"
 4. Select your forked repository
-5. In Railway dashboard:
-   - Go to your project
+
+### Setting up Railway
+
+1. **Add Environment Variables**
+   - Go to your project in Railway dashboard
    - Click on "Variables"
-   - Add `RAILWAY_VOLUME_MOUNT_PATH=/data`
-6. Railway will automatically detect the Node.js project and start deployment
-7. Once deployed, go to the "Deployments" tab and click on the latest deployment
-8. Go to the "Logs" tab to see the QR code
-9. Scan the QR code with your WhatsApp to connect the bot
+   - Add the following variables:
+     ```
+     RAILWAY_VOLUME_MOUNT_PATH=/data
+     NODE_ENV=production
+     ```
+
+2. **Set up Persistent Storage**
+   - In Railway dashboard, go to your project
+   - Click on "Settings"
+   - Scroll to "Volumes"
+   - Click "New Volume"
+   - Set the following:
+     - Name: `data`
+     - Mount Path: `/data`
+     - Size: Choose based on your needs (e.g., 1GB)
+
+3. **Deploy**
+   - Railway will automatically detect the Node.js project
+   - It will use the `start` script from your `package.json`
+   - The bot will start automatically
+
+4. **Get QR Code**
+   - Once deployed, go to the "Deployments" tab
+   - Click on the latest deployment
+   - Go to the "Logs" tab
+   - Look for the QR code
+   - Scan it with your WhatsApp to connect the bot
 
 ## Storage
 The bot uses Railway's persistent storage to save:

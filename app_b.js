@@ -12,8 +12,9 @@ const PORT = process.env.PORT || 3000;
 // Set max listeners to prevent warning
 process.setMaxListeners(20);
 
-// Use Railway's persistent storage path if available, otherwise use local path
-const STORAGE_PATH = process.env.RAILWAY_VOLUME_MOUNT_PATH || __dirname;
+// Use Railway's persistent storage path
+const STORAGE_PATH = process.env.RAILWAY_PERSISTENT_DIRECTORY || __dirname;
+console.log('Using storage path:', STORAGE_PATH);
 
 // Create directories for storing data
 const MESSAGES_DIR = path.join(STORAGE_PATH, 'saved_messages');
