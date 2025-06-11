@@ -1,0 +1,24 @@
+{
+  "name": "whatsapp-bot",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@hapi/boom": "^10.0.1",
+    "@whiskeysockets/baileys": "^6.17.16",
+    "axios": "^1.8.4",
+    "child_process": "^1.0.2",
+    "fs": "^0.0.1-security",
+    "node-schedule": "^2.1.1",
+    "nodemon": "^3.1.9",
+    "pino": "^9.6.0",
+    "pm2": "^6.0.5",
+    "qrcode-terminal": "^0.12.0"
+  }
+}
