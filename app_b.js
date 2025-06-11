@@ -43,9 +43,16 @@ app.get('/', (req, res) => {
   });
 });
 
-// Start Express server
-app.listen(PORT, '0.0.0.0', () => {
+// Start Express server first
+const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
+  // Start the bot after server is running
+  startBot();
+});
+
+// Handle server errors
+server.on('error', (error) => {
+  console.error('Server error:', error);
 });
 
 // Status tracking and settings
@@ -742,6 +749,3 @@ process.on('SIGINT', () => {
   saveDeletedMessages();
   process.exit(0);
 });
-
-// Start the bot
-startBot();

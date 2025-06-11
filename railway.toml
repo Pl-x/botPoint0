@@ -5,7 +5,8 @@ buildCommand = "npm install"
 [deploy]
 startCommand = "npm start"
 healthcheckPath = "/"
-healthcheckTimeout = 100
+healthcheckTimeout = 300
+healthcheckInterval = 15
 
 [deploy.volumes]
 data = "/data" 
