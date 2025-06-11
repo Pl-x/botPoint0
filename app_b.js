@@ -1,4 +1,4 @@
-// Enhanced WhatsApp Bot by 7ycrx - Debugged and Improved Version
+// Enhanced WhatsApp Bot by BotPoint 
 const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys');
 const { Boom } = require('@hapi/boom');
 const qrcode = require('qrcode-terminal');
@@ -776,3 +776,5 @@ process.on('SIGINT', () => {
   saveDeletedMessages();
   process.exit(0);
 });
+
+// Regards to Pl-X for code-documentation
