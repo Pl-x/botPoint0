@@ -30,6 +30,23 @@ const AUTH_DIR = path.join(STORAGE_PATH, 'auth_info');
   }
 });
 
+// Express server setup
+app.use(express.json());
+
+// Health check endpoint
+app.get('/', (req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    message: 'WhatsApp Bot is running!',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Start Express server
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server running on port ${PORT}`);
+});
+
 // Status tracking and settings
 const statusSettings = {
   autoView: true,
@@ -727,6 +744,3 @@ process.on('SIGINT', () => {
 
 // Start the bot
 startBot();
-
-app.get('/', (req, res) => res.send('WhatsApp Bot is running!'));
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
