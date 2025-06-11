@@ -635,8 +635,16 @@ async function startBot() {
   // Load existing deleted messages
   loadDeletedMessages();
   
-  // Set logger to fatal level to reduce console output
-  const logger = pino({ level: 'fatal' });
+  // Set logger to info level for more detailed logs
+  const logger = pino({ 
+    level: 'info',
+    transport: {
+      target: 'pino-pretty',
+      options: {
+        colorize: true
+      }
+    }
+  });
   
   try {
     const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
@@ -647,17 +655,30 @@ async function startBot() {
       auth: state,
       printQRInTerminal: true,
       browser: ['Enhanced Bot', 'Chrome', '103.0.5060.114'],
-      logger: pino({ level: 'info' }), // Changed to info level for more logging
+      logger,
       markOnlineOnConnect: true,
-      // Let user control when to send read receipts
-      shouldSendReadReceipt: readReceiptSettings.showReadReceipts
+      shouldSendReadReceipt: readReceiptSettings.showReadReceipts,
+      connectTimeoutMs: 60000, // Increase connection timeout
+      retryRequestDelayMs: 5000, // Add delay between retries
+      defaultQueryTimeoutMs: 60000, // Increase query timeout
+      qr: {
+        small: true // Make QR code smaller
+      }
     });
+    
+    console.log('Socket created, waiting for QR code...');
     
     // Store current connection
     connection = sock;
     
     sock.ev.on('connection.update', async (update) => {
       const { connection: conn, lastDisconnect, qr } = update;
+      
+      if (qr) {
+        console.log('=== QR Code Generated ===');
+        qrcode.generate(qr, { small: true });
+        console.log('=== Scan QR Code Above ===');
+      }
       
       if (conn === 'close') {
         isSessionActive = false; // Reset session flag
@@ -666,7 +687,7 @@ async function startBot() {
           (lastDisconnect?.error instanceof Boom)?.output?.statusCode !== DisconnectReason.loggedOut;
         
         if (shouldReconnect) {
-          console.log('Reconnecting...');
+          console.log('Connection closed, attempting to reconnect...');
           setTimeout(() => {
             startBot();
           }, 5000); // Wait 5 seconds before reconnecting
@@ -674,11 +695,8 @@ async function startBot() {
           console.log('Connection closed, not reconnecting');
         }
       } else if (conn === 'open') {
-        console.log('Bot is now connected! Ready to use - Normal WhatsApp Mode Active');
-      }
-      
-      if (qr) {
-        qrcode.generate(qr, { small: true });
+        console.log('=== Bot is now connected! ===');
+        console.log('Ready to use - Normal WhatsApp Mode Active');
       }
     });
     
