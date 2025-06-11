@@ -12,14 +12,22 @@ const PORT = process.env.PORT || 3000;
 // Set max listeners to prevent warning
 process.setMaxListeners(20);
 
-// Create directories for storing data
-const MESSAGES_DIR = path.join(__dirname, 'saved_messages');
-const STATUS_DIR = path.join(__dirname, 'status_updates');
-const MEDIA_DIR = path.join(__dirname, 'media');
-const DELETED_DIR = path.join(__dirname, 'deleted_messages'); // New directory for deleted messages
+// Use Railway's persistent storage path if available, otherwise use local path
+const STORAGE_PATH = process.env.RAILWAY_VOLUME_MOUNT_PATH || __dirname;
 
-[MESSAGES_DIR, STATUS_DIR, MEDIA_DIR, DELETED_DIR].forEach(dir => {
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir);
+// Create directories for storing data
+const MESSAGES_DIR = path.join(STORAGE_PATH, 'saved_messages');
+const STATUS_DIR = path.join(STORAGE_PATH, 'status_updates');
+const MEDIA_DIR = path.join(STORAGE_PATH, 'media');
+const DELETED_DIR = path.join(STORAGE_PATH, 'deleted_messages');
+const AUTH_DIR = path.join(STORAGE_PATH, 'auth_info');
+
+// Create directories if they don't exist
+[MESSAGES_DIR, STATUS_DIR, MEDIA_DIR, DELETED_DIR, AUTH_DIR].forEach(dir => {
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+    console.log(`Created directory: ${dir}`);
+  }
 });
 
 // Status tracking and settings
