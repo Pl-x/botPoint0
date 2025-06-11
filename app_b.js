@@ -14,7 +14,8 @@ process.setMaxListeners(20);
 
 // Use Railway's persistent storage path
 const STORAGE_PATH = process.env.RAILWAY_PERSISTENT_DIRECTORY || __dirname;
-console.log('Using storage path:', STORAGE_PATH);
+console.log('=== Bot Starting ===');
+console.log('Storage path:', STORAGE_PATH);
 
 // Create directories for storing data
 const MESSAGES_DIR = path.join(STORAGE_PATH, 'saved_messages');
@@ -620,6 +621,8 @@ let isSessionActive = false;
 
 // Main bot function
 async function startBot() {
+  console.log('=== Starting WhatsApp Bot ===');
+  
   // Check if a session is already active
   if (isSessionActive) {
     console.log('A session is already active. Only one session allowed.');
@@ -636,14 +639,15 @@ async function startBot() {
   const logger = pino({ level: 'fatal' });
   
   try {
-    const { state, saveCreds } = await useMultiFileAuthState('auth_info');
+    const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
+    console.log('Auth state loaded from:', AUTH_DIR);
     
     // Create socket with normal WhatsApp settings
     const sock = makeWASocket({
       auth: state,
       printQRInTerminal: true,
       browser: ['Enhanced Bot', 'Chrome', '103.0.5060.114'],
-      logger,
+      logger: pino({ level: 'info' }), // Changed to info level for more logging
       markOnlineOnConnect: true,
       // Let user control when to send read receipts
       shouldSendReadReceipt: readReceiptSettings.showReadReceipts
