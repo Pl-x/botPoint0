@@ -74,6 +74,11 @@ const readReceiptSettings = {
 // Track deleted messages - initialize properly as an object
 let deletedMessages = {};
 
+// Track QR code generation
+let qrGenerated = false;
+let connection = null;
+let isSessionActive = false;
+
 // Load existing deleted messages from disk at startup
 function loadDeletedMessages() {
   try {
@@ -613,12 +618,6 @@ function formatUptime(seconds) {
   return `${days}d ${hours}h ${minutes}m ${secs}s`;
 }
 
-// Store active connection
-let connection = null;
-
-// Session management flag - ensure only one session
-let isSessionActive = false;
-
 // Main bot function
 async function startBot() {
   console.log('=== Starting WhatsApp Bot ===');
@@ -653,16 +652,16 @@ async function startBot() {
     // Create socket with normal WhatsApp settings
     const sock = makeWASocket({
       auth: state,
-      printQRInTerminal: true,
+      printQRInTerminal: false, // Disable default QR printing
       browser: ['Enhanced Bot', 'Chrome', '103.0.5060.114'],
       logger,
       markOnlineOnConnect: true,
       shouldSendReadReceipt: readReceiptSettings.showReadReceipts,
-      connectTimeoutMs: 60000, // Increase connection timeout
-      retryRequestDelayMs: 5000, // Add delay between retries
-      defaultQueryTimeoutMs: 60000, // Increase query timeout
+      connectTimeoutMs: 60000,
+      retryRequestDelayMs: 5000,
+      defaultQueryTimeoutMs: 60000,
       qr: {
-        small: true // Make QR code smaller
+        small: true
       }
     });
     
@@ -671,17 +670,22 @@ async function startBot() {
     // Store current connection
     connection = sock;
     
+    // Remove any existing event listeners
+    sock.ev.removeAllListeners('connection.update');
+    
     sock.ev.on('connection.update', async (update) => {
       const { connection: conn, lastDisconnect, qr } = update;
       
-      if (qr) {
+      if (qr && !qrGenerated) {
+        qrGenerated = true;
         console.log('=== QR Code Generated ===');
         qrcode.generate(qr, { small: true });
         console.log('=== Scan QR Code Above ===');
       }
       
       if (conn === 'close') {
-        isSessionActive = false; // Reset session flag
+        isSessionActive = false;
+        qrGenerated = false; // Reset QR flag
         
         const shouldReconnect = 
           (lastDisconnect?.error instanceof Boom)?.output?.statusCode !== DisconnectReason.loggedOut;
@@ -690,7 +694,7 @@ async function startBot() {
           console.log('Connection closed, attempting to reconnect...');
           setTimeout(() => {
             startBot();
-          }, 5000); // Wait 5 seconds before reconnecting
+          }, 5000);
         } else {
           console.log('Connection closed, not reconnecting');
         }
@@ -745,7 +749,8 @@ async function startBot() {
     return sock;
   } catch (error) {
     console.error('Error in startBot:', error);
-    isSessionActive = false; // Reset session flag on error
+    isSessionActive = false;
+    qrGenerated = false;
     
     // Attempt to restart after a delay
     setTimeout(() => {
