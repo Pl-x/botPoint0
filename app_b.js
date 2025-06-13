@@ -6,23 +6,33 @@ const pino = require('pino');
 const fs = require('fs');
 const path = require('path');
 const express = require('express');
+const { Octokit } = require('@octokit/rest');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Set max listeners to prevent warning
-process.setMaxListeners(20);
+// GitHub configuration
+const octokit = new Octokit({
+  auth: process.env.GITHUB_TOKEN
+});
 
-// Use Render's persistent storage path or fallback to local directory
-const STORAGE_PATH = process.env.RENDER_PERSISTENT_DIRECTORY || __dirname;
+const GITHUB_OWNER = process.env.GITHUB_OWNER;
+const GITHUB_REPO = process.env.GITHUB_REPO;
+const GITHUB_BRANCH = process.env.GITHUB_BRANCH || 'main';
+
+// Storage configuration
+const USE_GITHUB_STORAGE = true; // Enforce GitHub storage exclusively
+const LOCAL_STORAGE_PATH = __dirname;
+
 console.log('=== Bot Starting ===');
-console.log('Storage path:', STORAGE_PATH);
+console.log('Storage type: GitHub (Exclusive)');
+console.log('Local storage path:', LOCAL_STORAGE_PATH);
 
 // Create directories for storing data
-const MESSAGES_DIR = path.join(STORAGE_PATH, 'saved_messages');
-const STATUS_DIR = path.join(STORAGE_PATH, 'status_updates');
-const MEDIA_DIR = path.join(STORAGE_PATH, 'media');
-const DELETED_DIR = path.join(STORAGE_PATH, 'deleted_messages');
-const AUTH_DIR = path.join(STORAGE_PATH, 'auth_info');
+const MESSAGES_DIR = path.join(LOCAL_STORAGE_PATH, 'saved_messages');
+const STATUS_DIR = path.join(LOCAL_STORAGE_PATH, 'status_updates');
+const MEDIA_DIR = path.join(LOCAL_STORAGE_PATH, 'media');
+const DELETED_DIR = path.join(LOCAL_STORAGE_PATH, 'deleted_messages');
+const AUTH_DIR = path.join(LOCAL_STORAGE_PATH, 'auth_info');
 
 // Create directories if they don't exist
 [MESSAGES_DIR, STATUS_DIR, MEDIA_DIR, DELETED_DIR, AUTH_DIR].forEach(dir => {
@@ -32,11 +42,6 @@ const AUTH_DIR = path.join(STORAGE_PATH, 'auth_info');
       console.log(`Created directory: ${dir}`);
     } catch (error) {
       console.error(`Error creating directory ${dir}:`, error);
-      // If we can't create directories, use local directory
-      if (STORAGE_PATH !== __dirname) {
-        console.log('Falling back to local directory for storage');
-        STORAGE_PATH = __dirname;
-      }
     }
   }
 });
@@ -61,8 +66,8 @@ app.get('/', (req, res) => {
         rss: `${Math.round(memoryUsage.rss / 1024 / 1024)}MB`
       },
       storage: {
-        path: STORAGE_PATH,
-        isLocal: STORAGE_PATH === __dirname
+        path: LOCAL_STORAGE_PATH,
+        isLocal: LOCAL_STORAGE_PATH === __dirname
       }
     });
   } catch (error) {
@@ -116,30 +121,100 @@ let qrGenerated = false;
 let connection = null;
 let isSessionActive = false;
 
-// Load existing deleted messages from disk at startup
-function loadDeletedMessages() {
+// GitHub storage functions
+async function saveToGitHub(filePath, content) {
+  if (!USE_GITHUB_STORAGE) {
+    throw new Error('GitHub storage is required but not enabled');
+  }
+  
   try {
-    if (fs.existsSync(path.join(DELETED_DIR, 'deleted_messages.json'))) {
-      const data = fs.readFileSync(path.join(DELETED_DIR, 'deleted_messages.json'), 'utf8');
-      deletedMessages = JSON.parse(data);
-      console.log('Loaded deleted messages from disk:', Object.keys(deletedMessages).length, 'chats');
+    const fileContent = typeof content === 'string' ? content : JSON.stringify(content, null, 2);
+    const encodedContent = Buffer.from(fileContent).toString('base64');
+
+    // Check if file exists
+    try {
+      await octokit.repos.getContent({
+        owner: GITHUB_OWNER,
+        repo: GITHUB_REPO,
+        path: filePath,
+        ref: GITHUB_BRANCH
+      });
+
+      // Update existing file
+      await octokit.repos.createOrUpdateFileContents({
+        owner: GITHUB_OWNER,
+        repo: GITHUB_REPO,
+        path: filePath,
+        message: `Update ${path.basename(filePath)}`,
+        content: encodedContent,
+        branch: GITHUB_BRANCH
+      });
+    } catch (error) {
+      if (error.status === 404) {
+        // Create new file
+        await octokit.repos.createOrUpdateFileContents({
+          owner: GITHUB_OWNER,
+          repo: GITHUB_REPO,
+          path: filePath,
+          message: `Create ${path.basename(filePath)}`,
+          content: encodedContent,
+          branch: GITHUB_BRANCH
+        });
+      } else {
+        throw error;
+      }
     }
+    console.log(`Successfully saved to GitHub: ${filePath}`);
+    return true;
   } catch (error) {
-    console.error('Error loading deleted messages:', error);
-    deletedMessages = {}; // Reset to empty object if there's an error
+    console.error(`Error saving to GitHub: ${error.message}`);
+    throw error; // Throw error instead of returning false
   }
 }
 
-// Save deleted messages to disk
-function saveDeletedMessages() {
+async function loadFromGitHub(filePath) {
+  if (!USE_GITHUB_STORAGE) {
+    throw new Error('GitHub storage is required but not enabled');
+  }
+  
   try {
-    fs.writeFileSync(
-      path.join(DELETED_DIR, 'deleted_messages.json'),
-      JSON.stringify(deletedMessages, null, 2)
-    );
-    console.log('Saved deleted messages to disk');
+    const response = await octokit.repos.getContent({
+      owner: GITHUB_OWNER,
+      repo: GITHUB_REPO,
+      path: filePath,
+      ref: GITHUB_BRANCH
+    });
+
+    const content = Buffer.from(response.data.content, 'base64').toString();
+    return JSON.parse(content);
+  } catch (error) {
+    console.error(`Error loading from GitHub: ${error.message}`);
+    throw error; // Throw error instead of returning null
+  }
+}
+
+// Modified saveDeletedMessages function
+async function saveDeletedMessages() {
+  try {
+    await saveToGitHub('deleted_messages.json', deletedMessages);
+    console.log('Saved deleted messages to GitHub');
   } catch (error) {
     console.error('Error saving deleted messages:', error);
+    throw error; // Propagate error since we require GitHub storage
+  }
+}
+
+// Modified loadDeletedMessages function
+async function loadDeletedMessages() {
+  try {
+    const data = await loadFromGitHub('deleted_messages.json');
+    if (data) {
+      deletedMessages = data;
+      console.log('Loaded deleted messages:', Object.keys(deletedMessages).length, 'chats');
+    }
+  } catch (error) {
+    console.error('Error loading deleted messages:', error);
+    throw error; // Propagate error since we require GitHub storage
   }
 }
 
@@ -207,43 +282,42 @@ async function downloadMedia(message, sender) {
   }
 }
 
-// Function to save message to disk - modified to handle media properly
+// Modified saveMessage function
 async function saveMessage(jid, message) {
   if (!jid || !message.key || !message.key.id) return;
   
   const fileId = `${jid.split('@')[0]}.json`;
-  const filePath = path.join(MESSAGES_DIR, fileId);
+  const githubPath = `messages/${fileId}`;
 
   let messages = {};
-  if (fs.existsSync(filePath)) {
-    try {
-      messages = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-    } catch (err) {
-      console.error(`Error reading message file: ${err}`);
-    }
-  }
-
-  // Handle media in messages - process asynchronously
-  let mediaInfo = null;
-  if (statusSettings.saveMedia && message.message) {
-    const sender = message.key.participant || message.key.remoteJid.split('@')[0];
-    mediaInfo = await downloadMedia(message, sender); // Changed to await
-  }
-
-  // Use message ID as key
-  messages[message.key.id] = {
-    key: message.key,
-    message: message.message,
-    messageTimestamp: message.messageTimestamp,
-    status: message.status,
-    mediaInfo: mediaInfo,
-    savedAt: new Date().toISOString()
-  };
-
+  
   try {
-    fs.writeFileSync(filePath, JSON.stringify(messages, null, 2));
-  } catch (err) {
-    console.error(`Error writing message file: ${err}`);
+    // Load from GitHub
+    messages = await loadFromGitHub(githubPath) || {};
+    console.log('Loaded messages from GitHub');
+
+    // Handle media in messages
+    let mediaInfo = null;
+    if (statusSettings.saveMedia && message.message) {
+      const sender = message.key.participant || message.key.remoteJid.split('@')[0];
+      mediaInfo = await downloadMedia(message, sender);
+    }
+
+    messages[message.key.id] = {
+      key: message.key,
+      message: message.message,
+      messageTimestamp: message.messageTimestamp,
+      status: message.status,
+      mediaInfo: mediaInfo,
+      savedAt: new Date().toISOString()
+    };
+
+    // Save to GitHub
+    await saveToGitHub(githubPath, messages);
+    console.log('Saved messages to GitHub');
+  } catch (error) {
+    console.error('Error in saveMessage:', error);
+    throw error; // Propagate error since we require GitHub storage
   }
 }
 
