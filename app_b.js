@@ -12,8 +12,8 @@ const PORT = process.env.PORT || 3000;
 // Set max listeners to prevent warning
 process.setMaxListeners(20);
 
-// Use Railway's persistent storage path
-const STORAGE_PATH = process.env.RAILWAY_PERSISTENT_DIRECTORY || __dirname;
+// Use Render's persistent storage path or fallback to local directory
+const STORAGE_PATH = process.env.RENDER_PERSISTENT_DIRECTORY || __dirname;
 console.log('=== Bot Starting ===');
 console.log('Storage path:', STORAGE_PATH);
 
@@ -27,21 +27,52 @@ const AUTH_DIR = path.join(STORAGE_PATH, 'auth_info');
 // Create directories if they don't exist
 [MESSAGES_DIR, STATUS_DIR, MEDIA_DIR, DELETED_DIR, AUTH_DIR].forEach(dir => {
   if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-    console.log(`Created directory: ${dir}`);
+    try {
+      fs.mkdirSync(dir, { recursive: true });
+      console.log(`Created directory: ${dir}`);
+    } catch (error) {
+      console.error(`Error creating directory ${dir}:`, error);
+      // If we can't create directories, use local directory
+      if (STORAGE_PATH !== __dirname) {
+        console.log('Falling back to local directory for storage');
+        STORAGE_PATH = __dirname;
+      }
+    }
   }
 });
 
 // Express server setup
 app.use(express.json());
 
-// Health check endpoint
+// Enhanced health check endpoint
 app.get('/', (req, res) => {
-  res.status(200).json({
-    status: 'ok',
-    message: 'WhatsApp Bot is running!',
-    timestamp: new Date().toISOString()
-  });
+  try {
+    const uptime = process.uptime();
+    const memoryUsage = process.memoryUsage();
+    
+    res.status(200).json({
+      status: 'ok',
+      message: 'WhatsApp Bot is running!',
+      timestamp: new Date().toISOString(),
+      uptime: formatUptime(uptime),
+      memory: {
+        heapUsed: `${Math.round(memoryUsage.heapUsed / 1024 / 1024)}MB`,
+        heapTotal: `${Math.round(memoryUsage.heapTotal / 1024 / 1024)}MB`,
+        rss: `${Math.round(memoryUsage.rss / 1024 / 1024)}MB`
+      },
+      storage: {
+        path: STORAGE_PATH,
+        isLocal: STORAGE_PATH === __dirname
+      }
+    });
+  } catch (error) {
+    console.error('Health check error:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Internal server error',
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 // Start Express server first
@@ -54,6 +85,12 @@ const server = app.listen(PORT, '0.0.0.0', () => {
 // Handle server errors
 server.on('error', (error) => {
   console.error('Server error:', error);
+  // Attempt to restart the server after a delay
+  setTimeout(() => {
+    console.log('Attempting to restart server...');
+    server.close();
+    server.listen(PORT, '0.0.0.0');
+  }, 5000);
 });
 
 // Status tracking and settings
