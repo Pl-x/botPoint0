@@ -131,44 +131,38 @@ async function saveToGitHub(filePath, content) {
     const fileContent = typeof content === 'string' ? content : JSON.stringify(content, null, 2);
     const encodedContent = Buffer.from(fileContent).toString('base64');
 
-    // Check if file exists
+    // Check if file exists and get its SHA
+    let sha = null;
     try {
-      await octokit.repos.getContent({
+      const response = await octokit.repos.getContent({
         owner: GITHUB_OWNER,
         repo: GITHUB_REPO,
         path: filePath,
         ref: GITHUB_BRANCH
       });
-
-      // Update existing file
-      await octokit.repos.createOrUpdateFileContents({
-        owner: GITHUB_OWNER,
-        repo: GITHUB_REPO,
-        path: filePath,
-        message: `Update ${path.basename(filePath)}`,
-        content: encodedContent,
-        branch: GITHUB_BRANCH
-      });
+      sha = response.data.sha;
     } catch (error) {
-      if (error.status === 404) {
-        // Create new file
-        await octokit.repos.createOrUpdateFileContents({
-          owner: GITHUB_OWNER,
-          repo: GITHUB_REPO,
-          path: filePath,
-          message: `Create ${path.basename(filePath)}`,
-          content: encodedContent,
-          branch: GITHUB_BRANCH
-        });
-      } else {
+      if (error.status !== 404) {
         throw error;
       }
     }
-    console.log(`Successfully saved to GitHub: ${filePath}`);
+
+    // Create or update file
+    await octokit.repos.createOrUpdateFileContents({
+      owner: GITHUB_OWNER,
+      repo: GITHUB_REPO,
+      path: filePath,
+      message: `${sha ? 'Update' : 'Create'} ${path.basename(filePath)}`,
+      content: encodedContent,
+      branch: GITHUB_BRANCH,
+      sha: sha // Include SHA if file exists
+    });
+
+    console.log(`Successfully ${sha ? 'updated' : 'created'} file in GitHub: ${filePath}`);
     return true;
   } catch (error) {
     console.error(`Error saving to GitHub: ${error.message}`);
-    throw error; // Throw error instead of returning false
+    throw error;
   }
 }
 
