@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: whatsapp-bot
+    env: node
+    buildCommand: npm install
+    startCommand: node app_b.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+    healthCheckPath: /
+    autoDeploy: true 

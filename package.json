@@ -4,7 +4,8 @@
   "main": "app_b.js",
   "scripts": {
     "start": "node app_b.js",
-    "dev": "nodemon app_b.js"
+    "dev": "nodemon app_b.js",
+    "build": "npm install"
   },
   "keywords": [],
   "author": "",
