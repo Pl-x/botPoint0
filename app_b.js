@@ -188,8 +188,16 @@ async function loadFromGitHub(filePath) {
     const content = Buffer.from(response.data.content, 'base64').toString();
     return JSON.parse(content);
   } catch (error) {
+    // If the repository is empty or file doesn't exist, return empty object/array
+    if (error.status === 404) {
+      console.log(`File ${filePath} not found in GitHub repository. Creating new file...`);
+      // Create an empty file structure based on the file type
+      const emptyContent = filePath.includes('deleted_messages') ? {} : [];
+      await saveToGitHub(filePath, emptyContent);
+      return emptyContent;
+    }
     console.error(`Error loading from GitHub: ${error.message}`);
-    throw error; // Throw error instead of returning null
+    throw error;
   }
 }
 
@@ -208,13 +216,11 @@ async function saveDeletedMessages() {
 async function loadDeletedMessages() {
   try {
     const data = await loadFromGitHub('deleted_messages.json');
-    if (data) {
-      deletedMessages = data;
-      console.log('Loaded deleted messages:', Object.keys(deletedMessages).length, 'chats');
-    }
+    deletedMessages = data || {};
+    console.log('Loaded deleted messages:', Object.keys(deletedMessages).length, 'chats');
   } catch (error) {
     console.error('Error loading deleted messages:', error);
-    throw error; // Propagate error since we require GitHub storage
+    deletedMessages = {}; // Initialize as empty object if loading fails
   }
 }
 
