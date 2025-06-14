@@ -1,4 +1,4 @@
-// Enhanced WhatsApp Bot by BotPoint 
+// BotPoint0-v1.0.0
 const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys');
 const { Boom } = require('@hapi/boom');
 const qrcode = require('qrcode-terminal');
@@ -491,7 +491,7 @@ async function handleCommand(sock, jid, text, message) {
   switch (command) {
     case 'help':
       return sock.sendMessage(jid, { text: 
-        '🤖 *7ycrx WhatsApp Bot* 🤖\n\n' +
+        '🤖 *Botpoint0-v1.0.0* 🤖\n\n' +
         '!help - Show this help message\n' +
         '!deleted - Show recently deleted messages\n' +
         '!status - Show current status settings\n' +
@@ -701,7 +701,7 @@ async function handleCommand(sock, jid, text, message) {
       
     case 'about':
       return sock.sendMessage(jid, { text: 
-        '📱 *WhatsApp Bot by 7ycrx* 📱\n\n' +
+        '📱 *Botpoint0-v1.0.0* 📱\n\n' +
         'Features:\n' +
         '- Auto views all statuses\n' +
         '- Auto reacts to statuses with emojis\n' +
