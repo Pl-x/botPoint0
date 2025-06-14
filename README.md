@@ -14,7 +14,6 @@ A feature-rich WhatsApp bot with status viewing, message tracking, and more.
 - Persistent storage on Railway
 
 ## Storage
-The bot uses Railway's persistent storage to save:
 - Authentication data
 - Messages
 - Status updates
