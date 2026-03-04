@@ -1,4 +1,5 @@
 // BotPoint0-v1.0.0
+require('dotenv').config();
 const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys');
 const { Boom } = require('@hapi/boom');
 const qrcodeTerminal = require('qrcode-terminal'); // Renamed to avoid confusion with web QR
@@ -519,4 +520,5 @@ process.on('SIGINT', () => {
   if (connection) connection.logout();
   saveDeletedMessages();
   process.exit(0);
+
 });
