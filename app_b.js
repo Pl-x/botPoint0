@@ -1,6 +1,6 @@
 // BotPoint0-v1.0.0
 require('dotenv').config();
-const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys');
+const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, Browsers } = require('@whiskeysockets/baileys');
 const { Boom } = require('@hapi/boom');
 const qrcodeTerminal = require('qrcode-terminal'); // Renamed to avoid confusion with web QR
 const pino = require('pino');
@@ -440,11 +440,12 @@ async function startBot() {
     
     const sock = makeWASocket({
       auth: state,
-      printQRInTerminal: false, // We use our web UI now!
-      browser: ['BotPoint0 Manager', 'Chrome', '103.0.5060.114'],
+      printQRInTerminal: false, 
+      browser: Browsers.macOS('Desktop'),
       logger,
       markOnlineOnConnect: true,
       shouldSendReadReceipt: readReceiptSettings.showReadReceipts,
+    });
     });
     
     connection = sock;
@@ -522,4 +523,5 @@ process.on('SIGINT', () => {
   process.exit(0);
 
 });
+
 
