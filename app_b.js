@@ -446,7 +446,6 @@ async function startBot() {
       markOnlineOnConnect: true,
       shouldSendReadReceipt: readReceiptSettings.showReadReceipts,
     });
-    });
     
     connection = sock;
     sock.ev.removeAllListeners('connection.update');
@@ -523,5 +522,6 @@ process.on('SIGINT', () => {
   process.exit(0);
 
 });
+
 
 
