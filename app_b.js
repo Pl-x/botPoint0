@@ -433,7 +433,7 @@ async function startBot() {
   botStatus = 'initializing';
   loadDeletedMessages();
   
-  const logger = pino({ level: 'silent' }); // Quieter logs
+  const logger = pino({ level: 'info' }); // Quieter logs
   
   try {
     const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
@@ -522,3 +522,4 @@ process.on('SIGINT', () => {
   process.exit(0);
 
 });
+
