@@ -425,6 +425,9 @@ function formatUptime(seconds) {
 // ==========================================
 // CORE BOT INITIALIZATION
 // ==========================================
+// ==========================================
+// CORE BOT INITIALIZATION
+// ==========================================
 async function startBot() {
   console.log('=== Initializing WhatsApp Core ===');
   if (isSessionActive) return;
@@ -433,7 +436,7 @@ async function startBot() {
   botStatus = 'initializing';
   loadDeletedMessages();
   
-  const logger = pino({ level: 'info' }); // Quieter logs
+  const logger = pino({ level: 'info' }); 
   
   try {
     const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
@@ -441,27 +444,45 @@ async function startBot() {
     const sock = makeWASocket({
       auth: state,
       printQRInTerminal: false, 
-      browser: Browsers.macOS('Desktop'),
+      // Pairing codes work best with the Ubuntu/Chrome disguise
+      browser: ["Ubuntu", "Chrome", "20.0.04"],
       logger,
       markOnlineOnConnect: true,
       shouldSendReadReceipt: readReceiptSettings.showReadReceipts,
     });
     
+    // --- NEW: PAIRING CODE LOGIC ---
+    // If the bot isn't logged in, wait 3 seconds and request an 8-digit code
+    if (!sock.authState.creds.me?.id) {
+        setTimeout(async () => {
+            const botNumber = process.env.BOT_NUMBER;
+            if (botNumber) {
+                try {
+                    const cleanNumber = botNumber.replace(/[^0-9]/g, '');
+                    const code = await sock.requestPairingCode(cleanNumber);
+                    console.log(`\n========================================================`);
+                    console.log(`📱 PAIRING CODE GENERATED: ${code}`);
+                    console.log(`👉 Open WhatsApp on your phone`);
+                    console.log(`👉 Go to Linked Devices -> Link a device -> Link with phone number instead`);
+                    console.log(`👉 Type in the code above!`);
+                    console.log(`========================================================\n`);
+                    botStatus = 'qr_ready'; // Update status for health check
+                } catch (err) {
+                    console.error('Failed to request pairing code. WhatsApp might be rate limiting.', err);
+                }
+            } else {
+                console.log('BOT_NUMBER not found in environment variables. Cannot request pairing code.');
+            }
+        }, 3000);
+    }
+    // -------------------------------
+
     connection = sock;
     sock.ev.removeAllListeners('connection.update');
     
     sock.ev.on('connection.update', async (update) => {
       const { connection: conn, lastDisconnect, qr } = update;
       
-      // 1. Capture the QR String for the Web UI
-      if (qr) {
-        currentQR = qr;
-        botStatus = 'qr_ready';
-        // Also print to terminal just in case
-        qrcodeTerminal.generate(qr, { small: true }); 
-      }
-      
-      // 2. Handle Connection Dropped
       if (conn === 'close') {
         currentQR = null;
         isSessionActive = false;
@@ -469,14 +490,13 @@ async function startBot() {
         
         const shouldReconnect = (lastDisconnect?.error instanceof Boom)?.output?.statusCode !== DisconnectReason.loggedOut;
         if (shouldReconnect) {
-          console.log('Connection closed, attempting to reconnect...');
-          setTimeout(startBot, 5000);
+          console.log('Connection closed, attempting to reconnect in 10 seconds...');
+          setTimeout(startBot, 10000); // Increased delay to prevent rapid spamming
         } else {
           console.log('Logged out entirely.');
         }
       } 
       
-      // 3. Handle Connection Success
       else if (conn === 'open') {
         currentQR = null;
         botStatus = 'connected';
@@ -522,6 +542,7 @@ process.on('SIGINT', () => {
   process.exit(0);
 
 });
+
 
 
 
