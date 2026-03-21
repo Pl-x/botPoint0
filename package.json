@@ -15,7 +15,7 @@
     "@octokit/rest": "^20.0.2",
     "@whiskeysockets/baileys": "^6.7.0",
     "@hapi/boom": "^10.0.0",
-    "express": "4.21.2",
+    "express": "4.22.1",
     "pino": "9.6.0",
     "pino-pretty": "^10.3.1",
     "qrcode-terminal": "^0.12.0",
